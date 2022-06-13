@@ -22,11 +22,14 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract SimpleNftLowerGas is ERC721, Ownable {
+  using Counters for Counters.Counter;
   using Strings for uint256;
   using Counters for Counters.Counter;
 
-  Counters.Counter private supply;
-
+  
+  Counters.Counter private _tokenIdCounter;
+  
+  
   string public uriPrefix = "";
   string public uriSuffix = ".json";
   string public hiddenMetadataUri;
@@ -37,11 +40,15 @@ contract SimpleNftLowerGas is ERC721, Ownable {
 
   bool public paused = true;
   bool public revealed = false;
+  
+  
+   constructor(address _tokenAddress) ERC721("MyNFT", "MTK") {
+        tokenAddress = IERC20(_tokenAddress);
+    }
 
-  constructor() ERC721("NAME", "SYMBOL") {
-    setHiddenMetadataUri("ipfs://__CID__/hidden.json");
-  }
 
+  
+ 
   modifier mintCompliance(uint256 _mintAmount) {
     require(_mintAmount > 0 && _mintAmount <= maxMintAmountPerTx, "Invalid mint amount!");
     require(supply.current() + _mintAmount <= maxSupply, "Max supply exceeded!");
@@ -52,13 +59,14 @@ contract SimpleNftLowerGas is ERC721, Ownable {
     return supply.current();
   }
 
-  function mint(uint256 _mintAmount) public payable mintCompliance(_mintAmount) {
-    require(!paused, "The contract is paused!");
-    require(msg.value >= cost * _mintAmount, "Insufficient funds!");
-
-    _mintLoop(msg.sender, _mintAmount);
-  }
-  
+ function safeMint() public {
+        tokenAddress.transferFrom(msg.sender, address(this), rate);
+        uint256 tokenId = _tokenIdCounter.current();
+        _tokenIdCounter.increment();
+        _safeMint(msg.sender, tokenId);
+    }
+    
+    
   function mintForAddress(uint256 _mintAmount, address _receiver) public mintCompliance(_mintAmount) onlyOwner {
     _mintLoop(_receiver, _mintAmount);
   }
@@ -138,21 +146,9 @@ contract SimpleNftLowerGas is ERC721, Ownable {
     paused = _state;
   }
 
-  function withdraw() public onlyOwner {
-    // This will pay HashLips 5% of the initial sale.
-    // You can remove this if you want, or keep it in to support HashLips and his channel.
-    // =============================================================================
-    (bool hs, ) = payable(0x943590A42C27D08e3744202c4Ae5eD55c2dE240D).call{value: address(this).balance * 5 / 100}("");
-    require(hs);
-    // =============================================================================
-
-    // This will transfer the remaining contract balance to the owner.
-    // Do not remove this otherwise you will not be able to withdraw the funds.
-    // =============================================================================
-    (bool os, ) = payable(owner()).call{value: address(this).balance}("");
-    require(os);
-    // =============================================================================
-  }
+    function withdrawToken() public onlyOwner {
+        tokenAddress.transfer(msg.sender, tokenAddress.balanceOf(address(this)));
+    }
 
   function _mintLoop(address _receiver, uint256 _mintAmount) internal {
     for (uint256 i = 0; i < _mintAmount; i++) {
