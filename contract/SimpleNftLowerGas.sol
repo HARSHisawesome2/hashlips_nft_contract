@@ -25,6 +25,8 @@ contract SimpleNftLowerGas is ERC721, Ownable {
   using Counters for Counters.Counter;
   using Strings for uint256;
   using Counters for Counters.Counter;
+  IERC20 public tokenAddress;
+  uint256 public rate = 100 * 10 ** 18;
 
   
   Counters.Counter private _tokenIdCounter;
@@ -34,10 +36,7 @@ contract SimpleNftLowerGas is ERC721, Ownable {
   string public uriSuffix = ".json";
   string public hiddenMetadataUri;
   
-  uint256 public cost = 0.01 ether;
-  uint256 public maxSupply = 10000;
-  uint256 public maxMintAmountPerTx = 5;
-
+ 
   bool public paused = true;
   bool public revealed = false;
   
